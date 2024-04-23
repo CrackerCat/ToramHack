@@ -30,10 +30,12 @@ android {
             cmake {
                 abiFilters += "arm64-v8a"
 
-                arguments += "-DANDROID_STL=c++_static"
+                arguments += "-DANDROID_STL=none"
                 arguments += "-DCMAKE_BUILD_TYPE=MinSizeRel"
 
                 cppFlags += "-std=c++20"
+                cppFlags += "-fno-exceptions"
+                cppFlags += "-fno-rtti"
                 cppFlags += "-fvisibility=hidden"
                 cppFlags += "-fvisibility-inlines-hidden"
                 cppFlags += "-DkNO_KEYSTONE"
@@ -65,6 +67,7 @@ android {
 }
 
 dependencies {
+    implementation("dev.rikka.ndk.thirdparty:cxx:1.2.0")
     implementation("com.bytedance.android:shadowhook:1.0.9")
 }
 

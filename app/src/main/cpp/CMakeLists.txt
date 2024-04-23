@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.22.1)
 
 project(toramhack)
 
+find_package(cxx REQUIRED CONFIG)
+
+link_libraries(cxx::cxx)
+
 file(GLOB_RECURSE kitty KittyMemory/*.cpp)
 
 add_library(${CMAKE_PROJECT_NAME} SHARED main.cpp ByNameModding/BNM.cpp ${kitty})

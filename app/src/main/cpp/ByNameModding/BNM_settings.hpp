@@ -43,7 +43,7 @@ static_assert(false, "ByNameModding requre C++20 and upper!");
 // #define BNM_DOTNET35
 
 //! Disable code for creating new classes and modifying old
-#define BNM_DISABLE_NEW_CLASSES 0
+#define BNM_DISABLE_NEW_CLASSES 1
 
 //! Use System.AppDomain to find il2cpp::vm::Assembly::GetAllAssemblies
 //! Can make game crashes on arm64

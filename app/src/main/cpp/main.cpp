@@ -4,8 +4,8 @@
 #include <thread>
 #include <fstream>
 #include <filesystem>
-#include <ranges>
 #include "zygisk.hpp"
+#include "strutil.h"
 #include "json.hpp"
 #include "BNM.hpp"
 #include "KittyInclude.hpp"
