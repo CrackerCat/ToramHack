@@ -30,16 +30,12 @@ static bool my_CheckPercent1(int percent) {
     return o_CheckPercent1(percent);
 }
 
-static Il2CppObject *hackTarget = nullptr;
-
 static bool (*o_targetToEnemy)(...);
 
 static bool my_targetToEnemy(Il2CppObject *thiz, Il2CppObject *manager) {
     if (thiz == nullptr || manager == nullptr) return false;
 
-    Property<Il2CppObject *> transform = LoadClass(manager).GetPropertyByName("transform");
-
-    hackTarget = transform[manager].Get();
+    Property<Il2CppObject *> transform = Class(manager).GetProperty("transform");
 
     return o_targetToEnemy(thiz, manager);
 }
@@ -91,11 +87,16 @@ my_checkAbnormalPercent(Il2CppObject *thiz, int abnormalType, int per, Il2CppObj
         addResistTime == nullptr)
         return false;
 
-    Property<bool> IsRange = LoadClass(thiz).GetPropertyByName("IsRange");
+    *addResistTime = 0;
+
+    Property<bool> IsRange = Class(thiz).GetProperty("IsRange");
 
     if (damageHack > 0 && IsRange[thiz].Get()) {
-        *addResistTime = 0;
         return false;
+    }
+
+    if (perfectHits) {
+        return true;
     }
 
     return o_checkAbnormalPercent(thiz, abnormalType, per, playerAction, mobAction, addResistTime);
@@ -152,12 +153,7 @@ my_CalcDamage(Il2CppObject *thiz, Il2CppObject *actarAction, Il2CppObject *targe
 
     if (thiz == nullptr || actarAction == nullptr || targetAction == nullptr) return;
 
-    bool isTargetPlayer =
-            std::string_view(targetAction->klass->name).find("Player") != std::string_view::npos;
-
-    if (isInvincible && isTargetPlayer) return;
-
-    Property<bool> IsRange = LoadClass(thiz).GetPropertyByName("IsRange");
+    Property<bool> IsRange = Class(thiz).GetProperty("IsRange");
 
     bool isActarPlayer =
             std::string_view(actarAction->klass->name).find("Player") != std::string_view::npos;
@@ -201,4 +197,17 @@ static void (*o_LateUpdate)(Il2CppObject *);
 static void my_LateUpdate(Il2CppObject *thiz) {
     SkipMode[thiz].Set(4);
     return o_LateUpdate(thiz);
+}
+
+static bool (*o_IsInvincibility)(Il2CppObject *);
+
+static bool my_IsInvincibility(Il2CppObject *thiz) {
+    return isInvincible || o_IsInvincibility(thiz);
+}
+
+static void (*o_SetSystemInvincible)(Il2CppObject *, float);
+
+static void my_SetSystemInvincible(Il2CppObject *thiz, float time) {
+    if (perfectHits) time = 0;
+    return o_SetSystemInvincible(thiz, time);
 }

@@ -4,14 +4,12 @@ project(toramhack)
 
 find_package(cxx REQUIRED CONFIG)
 
-link_libraries(cxx::cxx)
-
-file(GLOB_RECURSE kitty KittyMemory/*.cpp)
-
-add_library(${CMAKE_PROJECT_NAME} SHARED main.cpp ByNameModding/BNM.cpp ${kitty})
-
 find_package(shadowhook REQUIRED CONFIG)
 
-target_link_libraries(${CMAKE_PROJECT_NAME} PUBLIC log shadowhook::shadowhook)
+link_libraries(log cxx::cxx shadowhook::shadowhook)
 
-target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC ByNameModding KittyMemory)
+file(GLOB_RECURSE BNM_SRC ByNameModding/*.cpp)
+
+add_library(${CMAKE_PROJECT_NAME} SHARED main.cpp ${BNM_SRC})
+
+target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ByNameModding/include)

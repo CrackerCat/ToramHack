@@ -13,6 +13,9 @@ android {
     }
 
     packaging {
+        resources {
+            excludes += "META-INF/**"
+        }
         jniLibs {
             excludes += "**/liblog.so"
             excludes += "**/libshadowhook.so"
@@ -21,7 +24,7 @@ android {
 
     defaultConfig {
         applicationId = "es.chiteroman.toramhack"
-        minSdk = 33
+        minSdk = 28
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
@@ -33,13 +36,14 @@ android {
                 arguments += "-DANDROID_STL=none"
                 arguments += "-DCMAKE_BUILD_TYPE=MinSizeRel"
 
+                cFlags += "-w"
+                cppFlags += "-w"
+
                 cppFlags += "-std=c++20"
                 cppFlags += "-fno-exceptions"
                 cppFlags += "-fno-rtti"
                 cppFlags += "-fvisibility=hidden"
                 cppFlags += "-fvisibility-inlines-hidden"
-                cppFlags += "-DkNO_KEYSTONE"
-                cppFlags += "-DkITTYMEMORY_DEBUG"
             }
         }
     }

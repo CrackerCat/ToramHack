@@ -7,8 +7,15 @@
 #include "zygisk.hpp"
 #include "strutil.h"
 #include "json.hpp"
-#include "BNM.hpp"
-#include "KittyInclude.hpp"
+#include "shadowhook.h"
+#include <BNM/Loading.hpp>
+#include <BNM/UserSettings/GlobalSettings.hpp>
+#include <BNM/Class.hpp>
+#include <BNM/Field.hpp>
+#include <BNM/Method.hpp>
+#include <BNM/Property.hpp>
+#include <BNM/Operators.hpp>
+#include <BNM/BasicMonoStructures.hpp>
 
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, "ToramHack", __VA_ARGS__)
 
@@ -20,8 +27,6 @@ using namespace BNM::IL2CPP;
 using namespace BNM::Structures::Mono;
 using namespace BNM::Structures::Unity;
 using namespace BNM::Utils;
-
-typedef bool (*T_CheckRangeHit)(Il2CppObject *, Il2CppObject *, Il2CppObject *, float);
 
 bool perfectHits = true;
 bool isInvincible = true;
@@ -41,12 +46,10 @@ static void writeConfig() {
 }
 
 Method<void> AddNPCMessage;
-Method<Il2CppObject *> FindPlayer;
 Field<Il2CppObject *> inputLabel;
-Field<monoString *> mText;
+Field<String *> mText;
 Property<int> EqLimit;
 Property<uint8_t> SkipMode;
-Property<bool> SystemInvincible;
 
 #include "hooks.h"
 
@@ -55,67 +58,68 @@ static void il2cppHack() {
 
     LOGD("Starting to hack...");
 
-    LoadClass FieldScriptManager("", "FieldScriptManager");
-    SkipMode = FieldScriptManager.GetPropertyByName("SkipMode");
-    auto LateUpdate = FieldScriptManager.GetMethodByName("LateUpdate");
+    Class AbnormalStateManager("", "AbnormalStateManager");
+    Method<bool> IsInvincibility = AbnormalStateManager.GetMethod("IsInvincibility");
+    HOOK(IsInvincibility.GetOffset(), my_IsInvincibility, o_IsInvincibility);
+
+    Class FieldScriptManager("", "FieldScriptManager");
+    SkipMode = FieldScriptManager.GetProperty("SkipMode");
+    auto LateUpdate = FieldScriptManager.GetMethod("LateUpdate");
     HOOK(LateUpdate, my_LateUpdate, o_LateUpdate);
 
-    LoadClass EnemyMobActionManagerBase("", "EnemyMobActionManagerBase");
-    SystemInvincible = EnemyMobActionManagerBase.GetPropertyByName("SystemInvincible");
-    MemoryPatch::createWithHex(SystemInvincible.getter.GetOffset(), "00008052C0035FD6").Modify();
+    Class EnemyMobActionManagerBase("", "EnemyMobActionManagerBase");
+    Method<void> SetSystemInvincible = EnemyMobActionManagerBase.GetMethod("SetSystemInvincible");
+    HOOK(SetSystemInvincible.GetOffset(), my_SetSystemInvincible, o_SetSystemInvincible);
 
-    LoadClass MathUtil("", "MathUtil");
-    auto CheckPercent1 = MathUtil.GetMethodByName("CheckPercent");
+    Class MathUtil("", "MathUtil");
+    auto CheckPercent1 = MathUtil.GetMethod("CheckPercent");
     HOOK(CheckPercent1, my_CheckPercent1, o_CheckPercent1);
 
-    LoadClass PlayerBattleManager("", "PlayerBattleManager");
-    auto targetToEnemy = PlayerBattleManager.GetMethodByName("targetToEnemy");
+    Class PlayerBattleManager("", "PlayerBattleManager");
+    auto targetToEnemy = PlayerBattleManager.GetMethod("targetToEnemy");
     HOOK(targetToEnemy, my_targetToEnemy, o_targetToEnemy);
 
-    LoadClass SkillMasterData("", "SkillMasterData");
-    EqLimit = SkillMasterData.GetPropertyByName("EqLimit");
-    auto CreateSkillData = SkillMasterData.GetMethodByName("CreateSkillData");
+    Class SkillMasterData("", "SkillMasterData");
+    EqLimit = SkillMasterData.GetProperty("EqLimit");
+    auto CreateSkillData = SkillMasterData.GetMethod("CreateSkillData");
     HOOK(CreateSkillData, my_CreateSkillData, o_CreateSkillData);
 
-    LoadClass PlayerAttackBase("", "PlayerAttackBase");
-    auto checkMobReaction = PlayerAttackBase.GetMethodByName("checkMobReaction");
+    Class PlayerAttackBase("", "PlayerAttackBase");
+    auto checkMobReaction = PlayerAttackBase.GetMethod("checkMobReaction");
     HOOK(checkMobReaction, my_checkMobReaction, o_checkMobReaction);
-    auto checkCriticalPercent = PlayerAttackBase.GetMethodByName("checkCriticalPercent");
+    auto checkCriticalPercent = PlayerAttackBase.GetMethod("checkCriticalPercent");
     HOOK(checkCriticalPercent, my_checkCriticalPercent, o_checkCriticalPercent);
-    auto checkAbnormalPercent = PlayerAttackBase.GetMethodByName("checkAbnormalPercent");
+    auto checkAbnormalPercent = PlayerAttackBase.GetMethod("checkAbnormalPercent");
     HOOK(checkAbnormalPercent, my_checkAbnormalPercent, o_checkAbnormalPercent);
-    auto ChackCorrectHit = PlayerAttackBase.GetMethodByName("ChackCorrectHit");
+    auto ChackCorrectHit = PlayerAttackBase.GetMethod("ChackCorrectHit");
     HOOK(ChackCorrectHit, my_ChackCorrectHit, o_ChackCorrectHit);
 
-    LoadClass ChatWindow("", "ChatWindow");
-    auto OnSubmit = ChatWindow.GetMethodByName("OnSubmit", 0);
+    Class ChatWindow("", "ChatWindow");
+    auto OnSubmit = ChatWindow.GetMethod("OnSubmit", 0);
     HOOK(OnSubmit, my_OnSubmit, o_OnSubmit);
 
-    AddNPCMessage = ChatWindow.GetMethodByName("AddNPCMessage", 2);
+    AddNPCMessage = ChatWindow.GetMethod("AddNPCMessage", 2);
 
-    inputLabel = ChatWindow.GetFieldByName("inputLabel");
+    inputLabel = ChatWindow.GetField("inputLabel");
 
-    LoadClass UILabel("", "UILabel");
-    mText = UILabel.GetFieldByName("mText");
+    Class UILabel("", "UILabel");
+    mText = UILabel.GetField("mText");
 
-    LoadClass SkillActionBase("", "SkillActionBase");
-    auto checkPercent = SkillActionBase.GetMethodByName("checkPercent");
+    Class SkillActionBase("", "SkillActionBase");
+    auto checkPercent = SkillActionBase.GetMethod("checkPercent");
     HOOK(checkPercent, my_checkPercent, o_checkPercent);
-    auto CalcDamage = SkillActionBase.GetMethodByName("CalcDamage", 2);
+    auto CalcDamage = SkillActionBase.GetMethod("CalcDamage", 2);
     HOOK(CalcDamage, my_CalcDamage, o_CalcDamage);
-    auto CalcStablePercent = SkillActionBase.GetMethodByName("CalcStablePercent");
+    auto CalcStablePercent = SkillActionBase.GetMethod("CalcStablePercent");
     HOOK(CalcStablePercent, my_CalcStablePercent, o_CalcStablePercent);
-    auto CalcMagicStablePercent = SkillActionBase.GetMethodByName("CalcMagicStablePercent");
+    auto CalcMagicStablePercent = SkillActionBase.GetMethod("CalcMagicStablePercent");
     HOOK(CalcMagicStablePercent, my_CalcMagicStablePercent, o_CalcMagicStablePercent);
 
-    LoadClass PlayerDataManager("", "PlayerDataManager");
-    FindPlayer = PlayerDataManager.GetMethodByName("FindPlayer", 0);
-
-    LoadClass PlayerBattleStatus("", "PlayerBattleStatus");
-    auto GetMotionSpeed = PlayerBattleStatus.GetMethodByName("GetMotionSpeed", 1);
+    Class PlayerBattleStatus("", "PlayerBattleStatus");
+    auto GetMotionSpeed = PlayerBattleStatus.GetMethod("GetMotionSpeed", 1);
     HOOK(GetMotionSpeed, my_GetMotionSpeed, o_GetMotionSpeed);
 
-    auto GetNextAtkTime = PlayerBattleStatus.GetMethodByName("GetNextAtkTime", 1);
+    auto GetNextAtkTime = PlayerBattleStatus.GetMethod("GetNextAtkTime", 1);
     HOOK(GetNextAtkTime, my_GetNextAtkTime, o_GetNextAtkTime);
 
     LOGD("End hack :D");
@@ -153,7 +157,7 @@ static void readConfig() {
 }
 
 static void start_hack(const std::string &str) {
-    shadowhook_init(SHADOWHOOK_MODE_UNIQUE, false);
+    shadowhook_init(SHADOWHOOK_MODE_UNIQUE, true);
 
     LOGD("Thread started! Config file: %s", str.c_str());
 
@@ -165,11 +169,13 @@ static void start_hack(const std::string &str) {
 
     LOGD("Il2cpp handle: %p", handle);
 
-    BNM::External::TryLoad(handle);
+    BNM::Loading::TryLoadByDlfcnHandle(handle);
+
+    BNM::Loading::AddOnLoadedEvent(il2cppHack);
+
+    BNM::Loading::TrySetupByUsersFinder();
 
     readConfig();
-
-    il2cppHack();
 }
 
 class ToramHack : public zygisk::ModuleBase {
@@ -209,8 +215,8 @@ public:
     }
 
 private:
-    zygisk::Api *api;
-    JNIEnv *env;
+    zygisk::Api *api = nullptr;
+    JNIEnv *env = nullptr;
     std::string appDir;
 };
 
