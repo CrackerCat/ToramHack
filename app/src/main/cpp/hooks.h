@@ -125,6 +125,9 @@ static void my_OnSubmit(Il2CppObject *thiz) {
             } else if (".a" == vector[0] && vector.size() == 2) {
                 attackSpeed = std::stoi(vector[1]);
                 log("Attack speed: %d", attackSpeed);
+            } else if (".an" == vector[0] && vector.size() == 2) {
+                animationSpeed = std::stoi(vector[1]);
+                log("Animation speed: %d", animationSpeed);
             } else if (".d" == vector[0] && vector.size() == 2) {
                 damageHack = std::stoi(vector[1]);
                 log("Damage mult: %d", damageHack);
@@ -210,4 +213,49 @@ static void (*o_SetSystemInvincible)(Il2CppObject *, float);
 static void my_SetSystemInvincible(Il2CppObject *thiz, float time) {
     if (perfectHits) time = 0;
     return o_SetSystemInvincible(thiz, time);
+}
+
+static int (*o_ParamCheck)(Il2CppObject *, short, int);
+
+static int my_ParamCheck(Il2CppObject *thiz, short type, int baseParam) {
+    if (type == 2 && animationSpeed > 0) return animationSpeed;
+    return o_ParamCheck(thiz, type, baseParam);
+}
+
+static float (*o_checkAddAbnormalResistTime)(Il2CppObject *, float, float);
+
+static float my_checkAddAbnormalResistTime(Il2CppObject *thiz, float resist, float addResist) {
+    if (perfectHits) return 0;
+    return o_checkAddAbnormalResistTime(thiz, resist, addResist);
+}
+
+static float (*o_GetAnbormalStateResistTime)(int, float);
+
+static float my_GetAnbormalStateResistTime(int type, float time) {
+    if (perfectHits) return 0;
+    return o_GetAnbormalStateResistTime(type, time);
+}
+
+static void (*o_SetAbnormalType)(Il2CppObject *, int, float);
+
+static void my_SetAbnormalType(Il2CppObject *thiz, int type, float addResistTime) {
+    if (perfectHits) addResistTime = 0;
+    return o_SetAbnormalType(thiz, type, addResistTime);
+}
+
+static void (*o_SetAbnormalType1)(Il2CppObject *, int, float, bool);
+
+static void my_SetAbnormalType1(Il2CppObject *thiz, int type, float addResistTime, bool force) {
+    if (perfectHits) addResistTime = 0;
+    return o_SetAbnormalType(thiz, type, addResistTime);
+}
+
+static void
+(*o_AbnormalDataCtor)(Il2CppObject *, int, float, float, uint8_t, bool, Il2CppObject *);
+
+static void
+my_AbnormalDataCtor(Il2CppObject *thiz, int type, float time, float resistTime, uint8_t localId,
+                    bool isForce, Il2CppObject *callback) {
+    if (perfectHits) resistTime = 0;
+    return o_AbnormalDataCtor(thiz, type, time, resistTime, localId, isForce, callback);
 }

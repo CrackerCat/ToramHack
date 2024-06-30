@@ -33,6 +33,7 @@ bool isInvincible = true;
 bool alwaysCrit = true;
 int attackSpeed = 10000;
 int damageHack = 0;
+int animationSpeed = 0;
 
 static void writeConfig() {
     std::ofstream ofs(path, std::ios::trunc);
@@ -41,6 +42,8 @@ static void writeConfig() {
     json["PerfectHits"] = perfectHits;
     json["AlwaysCritical"] = alwaysCrit;
     json["AttackSpeed"] = attackSpeed;
+    json["damageHack"] = damageHack;
+    json["animationSpeed"] = animationSpeed;
 
     ofs << json;
 }
@@ -58,9 +61,27 @@ static void il2cppHack() {
 
     LOGD("Starting to hack...");
 
+    Class AbnormalData("", "AbnormalData");
+    auto AbnormalDataCtor = AbnormalData.GetMethod(".ctor");
+    HOOK(AbnormalDataCtor.GetOffset(), my_AbnormalDataCtor, o_AbnormalDataCtor);
+
+    Class SkillDamageData("", "SkillDamageData");
+    Method<void> SetAbnormalType = SkillDamageData.GetMethod("SetAbnormalType", 2);
+    Method<void> SetAbnormalType1 = SkillDamageData.GetMethod("SetAbnormalType", 3);
+    HOOK(SetAbnormalType.GetOffset(), my_SetAbnormalType, o_SetAbnormalType);
+    HOOK(SetAbnormalType1.GetOffset(), my_SetAbnormalType1, o_SetAbnormalType1);
+
+    Class TakePlayer("", "TakePlayer");
+    Method<int> ParamCheck = TakePlayer.GetMethod("ParamCheck");
+    HOOK(ParamCheck.GetOffset(), my_ParamCheck, o_ParamCheck);
+
     Class AbnormalStateManager("", "AbnormalStateManager");
     Method<bool> IsInvincibility = AbnormalStateManager.GetMethod("IsInvincibility");
     HOOK(IsInvincibility.GetOffset(), my_IsInvincibility, o_IsInvincibility);
+    Method<float> GetAnbormalStateResistTime = AbnormalStateManager.GetMethod(
+            "GetAnbormalStateResistTime");
+    HOOK(GetAnbormalStateResistTime.GetOffset(), my_GetAnbormalStateResistTime,
+         o_GetAnbormalStateResistTime);
 
     Class FieldScriptManager("", "FieldScriptManager");
     SkipMode = FieldScriptManager.GetProperty("SkipMode");
@@ -70,6 +91,10 @@ static void il2cppHack() {
     Class EnemyMobActionManagerBase("", "EnemyMobActionManagerBase");
     Method<void> SetSystemInvincible = EnemyMobActionManagerBase.GetMethod("SetSystemInvincible");
     HOOK(SetSystemInvincible.GetOffset(), my_SetSystemInvincible, o_SetSystemInvincible);
+    Method<float> checkAddAbnormalResistTime = EnemyMobActionManagerBase.GetMethod(
+            "checkAddAbnormalResistTime");
+    HOOK(checkAddAbnormalResistTime.GetOffset(), my_checkAddAbnormalResistTime,
+         o_checkAddAbnormalResistTime);
 
     Class MathUtil("", "MathUtil");
     auto CheckPercent1 = MathUtil.GetMethod("CheckPercent");
@@ -154,9 +179,23 @@ static void readConfig() {
     } else {
         LOGD("Error reading attackSpeed");
     }
+
+    if (json.contains("damageHack") && json["damageHack"].is_number_integer()) {
+        animationSpeed = json["damageHack"].get<int>();
+    } else {
+        LOGD("Error reading damageHack");
+    }
+
+    if (json.contains("animationSpeed") && json["animationSpeed"].is_number_integer()) {
+        animationSpeed = json["animationSpeed"].get<int>();
+    } else {
+        LOGD("Error reading animationSpeed");
+    }
 }
 
 static void start_hack(const std::string &str) {
+    readConfig();
+
     shadowhook_init(SHADOWHOOK_MODE_UNIQUE, true);
 
     LOGD("Thread started! Config file: %s", str.c_str());
@@ -169,13 +208,11 @@ static void start_hack(const std::string &str) {
 
     LOGD("Il2cpp handle: %p", handle);
 
-    BNM::Loading::TryLoadByDlfcnHandle(handle);
-
     BNM::Loading::AddOnLoadedEvent(il2cppHack);
 
-    BNM::Loading::TrySetupByUsersFinder();
+    BNM::Loading::TryLoadByDlfcnHandle(handle);
 
-    readConfig();
+    BNM::Loading::TrySetupByUsersFinder();
 }
 
 class ToramHack : public zygisk::ModuleBase {
@@ -186,22 +223,25 @@ public:
     }
 
     void preAppSpecialize(zygisk::AppSpecializeArgs *args) override {
-        const char *dir = env->GetStringUTFChars(args->app_data_dir, nullptr);
+        auto dir = env->GetStringUTFChars(args->app_data_dir, nullptr);
 
-        if (dir != nullptr) {
-
-            bool isToram = std::string_view(dir).ends_with("/com.asobimo.toramonline");
-
-            env->ReleaseStringUTFChars(args->app_data_dir, dir);
-
-            if (isToram) {
-                appDir = dir;
-                api->setOption(zygisk::FORCE_DENYLIST_UNMOUNT);
-                return;
-            }
+        if (!dir) {
+            api->setOption(zygisk::DLCLOSE_MODULE_LIBRARY);
+            return;
         }
 
-        api->setOption(zygisk::DLCLOSE_MODULE_LIBRARY);
+        bool isToram = std::string_view(dir).ends_with("/com.asobimo.toramonline");
+
+        env->ReleaseStringUTFChars(args->app_data_dir, dir);
+
+        if (!isToram) {
+            api->setOption(zygisk::DLCLOSE_MODULE_LIBRARY);
+            return;
+        }
+
+        api->setOption(zygisk::FORCE_DENYLIST_UNMOUNT);
+
+        appDir = dir;
     }
 
     void postAppSpecialize(const zygisk::AppSpecializeArgs *args) override {

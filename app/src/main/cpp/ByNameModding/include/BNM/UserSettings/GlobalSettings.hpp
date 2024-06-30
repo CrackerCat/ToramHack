@@ -45,11 +45,11 @@ static_assert(false, "ByNameModding требуется C++20 и выше!");
 
 //! Включить код создания новых классов и модификации существующих
 //! Allow code for creating new classes and modifying existing ones
-#define BNM_CLASSES_MANAGEMENT
+//#define BNM_CLASSES_MANAGEMENT
 
 //! Включить код создания coroutine. ТРЕБУЕТСЯ ClassesManagement!
 //! Enable coroutine creation code. REQUIRED ClassesManagement!
-#define BNM_COROUTINE
+//#define BNM_COROUTINE
 
 //! Отключить авто подмену через таблицу виртуальных методов в ClassesManagement
 //! Disable auto hook via virtual method table in ClassesManagement

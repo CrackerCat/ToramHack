@@ -12,4 +12,4 @@ file(GLOB_RECURSE BNM_SRC ByNameModding/*.cpp)
 
 add_library(${CMAKE_PROJECT_NAME} SHARED main.cpp ${BNM_SRC})
 
-target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ByNameModding/include)
+include_directories(ByNameModding/include)
