@@ -16,4 +16,3 @@ local.properties
 module/zygisk
 out
 *.zip
-*.so
