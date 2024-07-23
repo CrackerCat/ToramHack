@@ -2,25 +2,22 @@
 #include <sys/system_properties.h>
 #include <unistd.h>
 #include <thread>
-#include <fstream>
-#include <filesystem>
+#include <ranges>
 #include "zygisk.hpp"
-#include "strutil.h"
-#include "json.hpp"
+#include "cJSON.h"
 #include "shadowhook.h"
-#include <BNM/Loading.hpp>
-#include <BNM/UserSettings/GlobalSettings.hpp>
-#include <BNM/Class.hpp>
-#include <BNM/Field.hpp>
-#include <BNM/Method.hpp>
-#include <BNM/Property.hpp>
-#include <BNM/Operators.hpp>
-#include <BNM/BasicMonoStructures.hpp>
+#include "Loading.hpp"
+#include "UserSettings/GlobalSettings.hpp"
+#include "Class.hpp"
+#include "Field.hpp"
+#include "Method.hpp"
+#include "Property.hpp"
+#include "Operators.hpp"
+#include "BasicMonoStructures.hpp"
 
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, "ToramHack", __VA_ARGS__)
 
 static std::string path;
-static nlohmann::json json;
 
 using namespace BNM;
 using namespace BNM::IL2CPP;
@@ -35,17 +32,54 @@ int attackSpeed = 10000;
 int damageHack = 0;
 int animationSpeed = 0;
 
+static void writeFile(char *str) {
+    FILE *file = fopen(path.c_str(), "w");
+
+    if (!file) return;
+
+    fprintf(file, "%s", str);
+
+    fclose(file);
+}
+
+static std::string readFile() {
+    std::string str;
+
+    FILE *file = fopen(path.c_str(), "r");
+
+    if (!file) return str;
+
+    fseek(file, 0, SEEK_END);
+    long size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    str.resize(size);
+    fread(str.data(), 1, size, file);
+    fclose(file);
+
+    return str;
+}
+
 static void writeConfig() {
-    std::ofstream ofs(path, std::ios::trunc);
+    cJSON *json = cJSON_CreateObject();
 
-    json["Invincible"] = isInvincible;
-    json["PerfectHits"] = perfectHits;
-    json["AlwaysCritical"] = alwaysCrit;
-    json["AttackSpeed"] = attackSpeed;
-    json["damageHack"] = damageHack;
-    json["animationSpeed"] = animationSpeed;
+    if (!json) return;
 
-    ofs << json;
+    cJSON_AddBoolToObject(json, "Invincible", isInvincible);
+    cJSON_AddBoolToObject(json, "PerfectHits", perfectHits);
+    cJSON_AddBoolToObject(json, "AlwaysCritical", alwaysCrit);
+    cJSON_AddNumberToObject(json, "AttackSpeed", attackSpeed);
+    cJSON_AddNumberToObject(json, "damageHack", damageHack);
+    cJSON_AddNumberToObject(json, "animationSpeed", animationSpeed);
+
+    char *jsonString = cJSON_Print(json);
+
+    if (!jsonString) return;
+
+    writeFile(jsonString);
+
+    cJSON_Delete(json);
+    free(jsonString);
 }
 
 Method<void> AddNPCMessage;
@@ -151,46 +185,44 @@ static void il2cppHack() {
 }
 
 static void readConfig() {
-    if (!std::filesystem::exists(path)) return;
+    std::string jsonStr = readFile();
 
-    std::ifstream ifs(path);
-    json = nlohmann::json::parse(ifs, nullptr, false, true);
+    if (jsonStr.empty()) return;
 
-    if (json.contains("Invincible") && json["Invincible"].is_boolean()) {
-        isInvincible = json["Invincible"].get<bool>();
-    } else {
-        LOGD("Error reading isInvincible");
+    cJSON *json = cJSON_ParseWithLength(jsonStr.c_str(), jsonStr.size());
+
+    const cJSON *j_Invincible = cJSON_GetObjectItemCaseSensitive(json, "Invincible");
+    const cJSON *j_PerfectHits = cJSON_GetObjectItemCaseSensitive(json, "PerfectHits");
+    const cJSON *j_AlwaysCritical = cJSON_GetObjectItemCaseSensitive(json, "AlwaysCritical");
+    const cJSON *j_AttackSpeed = cJSON_GetObjectItemCaseSensitive(json, "AttackSpeed");
+    const cJSON *j_damageHack = cJSON_GetObjectItemCaseSensitive(json, "damageHack");
+    const cJSON *j_animationSpeed = cJSON_GetObjectItemCaseSensitive(json, "animationSpeed");
+
+    if (j_Invincible) {
+        isInvincible = cJSON_IsTrue(j_Invincible);
     }
 
-    if (json.contains("PerfectHits") && json["PerfectHits"].is_boolean()) {
-        perfectHits = json["PerfectHits"].get<bool>();
-    } else {
-        LOGD("Error reading perfectHits");
+    if (j_PerfectHits) {
+        perfectHits = cJSON_IsTrue(j_PerfectHits);
     }
 
-    if (json.contains("AlwaysCritical") && json["AlwaysCritical"].is_boolean()) {
-        alwaysCrit = json["AlwaysCritical"].get<bool>();
-    } else {
-        LOGD("Error reading alwaysCrit");
+    if (j_AlwaysCritical) {
+        alwaysCrit = cJSON_IsTrue(j_AlwaysCritical);
     }
 
-    if (json.contains("AttackSpeed") && json["AttackSpeed"].is_number_integer()) {
-        attackSpeed = json["AttackSpeed"].get<int>();
-    } else {
-        LOGD("Error reading attackSpeed");
+    if (j_AttackSpeed) {
+        attackSpeed = j_AttackSpeed->valueint;
     }
 
-    if (json.contains("damageHack") && json["damageHack"].is_number_integer()) {
-        animationSpeed = json["damageHack"].get<int>();
-    } else {
-        LOGD("Error reading damageHack");
+    if (j_damageHack) {
+        damageHack = j_damageHack->valueint;
     }
 
-    if (json.contains("animationSpeed") && json["animationSpeed"].is_number_integer()) {
-        animationSpeed = json["animationSpeed"].get<int>();
-    } else {
-        LOGD("Error reading animationSpeed");
+    if (j_animationSpeed) {
+        animationSpeed = j_animationSpeed->valueint;
     }
+
+    cJSON_Delete(json);
 }
 
 static void start_hack(const std::string &str) {

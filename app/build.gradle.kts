@@ -14,10 +14,9 @@ android {
 
     packaging {
         resources {
-            excludes += "META-INF/**"
+            excludes += "**"
         }
         jniLibs {
-            excludes += "**/liblog.so"
             excludes += "**/libshadowhook.so"
         }
     }
@@ -33,13 +32,15 @@ android {
             cmake {
                 abiFilters += "arm64-v8a"
 
-                arguments += "-DANDROID_STL=none"
                 arguments += "-DCMAKE_BUILD_TYPE=MinSizeRel"
+                arguments += "-DANDROID_STL=none"
+                arguments += "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON"
 
-                cFlags += "-w"
-                cppFlags += "-w"
+                cFlags += "-std=c23"
+                cFlags += "-fvisibility=hidden"
+                cFlags += "-fvisibility-inlines-hidden"
 
-                cppFlags += "-std=c++20"
+                cppFlags += "-std=c++23"
                 cppFlags += "-fno-exceptions"
                 cppFlags += "-fno-rtti"
                 cppFlags += "-fvisibility=hidden"

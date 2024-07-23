@@ -116,7 +116,11 @@ static void my_OnSubmit(Il2CppObject *thiz) {
 
     if (str.starts_with('.')) {
 
-        std::vector<std::string> vector = strutil::split(str, ' ');
+        std::vector<std::string> vector;
+
+        for (const auto &item: std::views::split(str, ' ')) {
+            vector.emplace_back(item.begin(), item.end());
+        }
 
         if (!vector.empty()) {
             if (".i" == vector[0] && vector.size() == 1) {
