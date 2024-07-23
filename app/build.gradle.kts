@@ -4,9 +4,9 @@ plugins {
 
 android {
     namespace = "es.chiteroman.toramhack"
-    compileSdk = 34
-    buildToolsVersion = "34.0.0"
-    ndkVersion = "26.3.11579264"
+    compileSdk = 35
+    buildToolsVersion = "35.0.0"
+    ndkVersion = "27.0.12077973"
 
     buildFeatures {
         prefab = true
@@ -25,7 +25,7 @@ android {
     defaultConfig {
         applicationId = "es.chiteroman.toramhack"
         minSdk = 28
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
@@ -66,13 +66,13 @@ android {
     externalNativeBuild {
         cmake {
             path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
         }
     }
 }
 
 dependencies {
-    implementation("dev.rikka.ndk.thirdparty:cxx:1.2.0")
-    implementation("com.bytedance.android:shadowhook:1.0.9")
+    implementation("org.lsposed.libcxx:libcxx:27.0.12077973")
 }
 
 tasks.register("updateModuleProp") {
